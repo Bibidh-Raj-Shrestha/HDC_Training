@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; background:#00050a; color:white; font-family:sans-serif; overflow:hidden;">
+
+<div style="position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.8); padding:20px; border:1px solid #00f2ff; border-radius:10px; width:280px; z-index:10; box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);">
+    <h3 style="margin:0 0 15px 0; color:#00f2ff; text-align:center; border-bottom: 1px solid #333; padding-bottom: 10px;">Satellite Launch Lab</h3>
+    
+    <label style="font-size: 14px;">Target Planet:</label>
+    <select id="planetChoice" onchange="changePlanet()" style="width:100%; padding:8px; margin: 8px 0 15px 0; background:#111; color:white; border:1px solid #444; border-radius:5px;">
+        <option value="earth">Earth (Heavy Gravity)</option>
+        <option value="mars">Mars (Medium Gravity)</option>
+        <option value="moon">Moon (Low Gravity)</option>
+    </select>
+
+    <label style="font-size: 14px;">Launch Velocity: <b id="sliderVal" style="color:#00f2ff; font-size:18px;">8.0</b> km/s</label>
+    <input type="range" id="speedInput" min="1" max="15" step="0.1" value="8" style="width:100%; margin: 10px 0;" oninput="updateSliderReadout()">
+    
+    <button onclick="launch()" style="width:100%; padding:12px; margin-top:10px; cursor:pointer; background:#00f2ff; border:none; border-radius:5px; font-weight:bold; font-size:16px; transition: 0.2s;">FIRE ROCKET</button>
+    
+    <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+    
+    <div style="font-size:14px; line-height:1.8; background:rgba(255,255,255,0.05); padding:10px; border-radius:5px;">
+        Planet: <b id="pName" style="color:#fff">Earth</b><br>
+        Current Speed: <span id="vDisp" style="font-family:monospace; color:#4ade80">0.00</span> km/s<br>
+        Status: <b id="status" style="color:#ffcc00">READY</b>
+    </div>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // Scientific Parameters (Scaled for the screen)
+    const planetData = {
+        earth: { mass: 5000, radius: 50, color: "#2271B3", name: "Earth" },
+        mars:  { mass: 1600, radius: 35, color: "#e27b58", name: "Mars" },
+        moon:  { mass: 450,  radius: 20, color: "#999999", name: "Moon" }
+    };
+
+    let currentPlanet = planetData.earth;
+    let sat = { x: 0, y: 0, vx: 0, vy: 0, active: false };
+    let trail = [];
+
+    function updateSliderReadout() {
+        const val = document.getElementById('speedInput').value;
+        document.getElementById('sliderVal').innerText = parseFloat(val).toFixed(1);
+    }
+
+    function changePlanet() {
+        const choice = document.getElementById('planetChoice').value;
+        currentPlanet = planetData[choice];
+        document.getElementById('pName').innerText = currentPlanet.name;
+        sat.active = false; 
+        trail = [];
+        document.getElementById('status').innerText = "READY";
+        document.getElementById('status').style.color = "#ffcc00";
+    }
+
+    function launch() {
+        const speed = parseFloat(document.getElementById('speedInput').value);
+        // Position satellite at a fixed height above center
+        sat.x = canvas.width/2;
+        sat.y = canvas.height/2 - 130; 
+        sat.vx = speed; 
+        sat.vy = 0;
+        sat.active = true;
+        trail = [];
+        document.getElementById('status').innerText = "IN ORBIT";
+        document.getElementById('status').style.color = "#4ade80";
+    }
+
+    function draw() {
+        // Motion blur effect
+        ctx.fillStyle = "rgba(0, 5, 10, 0.2)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        let cx = canvas.width/2;
+        let cy = canvas.height/2;
+
+        // Draw Planet
+        ctx.beginPath();
+        ctx.arc(cx, cy, currentPlanet.radius, 0, Math.PI*2);
+        ctx.fillStyle = currentPlanet.color;
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        if (sat.active) {
+            // Newton's Gravitational Force Logic
+            let dx = cx - sat.x;
+            let dy = cy - sat.y;
+            let dSq = dx*dx + dy*dy;
+            let d = Math.sqrt(dSq);
+
+            // F = GM/r^2
+            let acceleration = currentPlanet.mass / dSq;
+            sat.vx += (dx/d) * acceleration;
+            sat.vy += (dy/d) * acceleration;
+
+            sat.x += sat.vx;
+            sat.y += sat.vy;
+
+            // Update trail
+            trail.push({x: sat.x, y: sat.y});
+            if(trail.length > 120) trail.shift();
+
+            // Check for Collision (Radius check)
+            if (d < currentPlanet.radius) {
+                sat.active = false;
+                document.getElementById('status').innerText = "CRASHED!";
+                document.getElementById('status').style.color = "#ff4444";
+            }
+            
+            // Check for Escape (Distance check)
+            if (d > canvas.width) {
+                sat.active = false;
+                document.getElementById('status').innerText = "ESCAPED!";
+                document.getElementById('status').style.color = "#38bdf8";
+            }
+
+            // Display current orbital speed
+            let currentV = Math.sqrt(sat.vx**2 + sat.vy**2);
+            document.getElementById('vDisp').innerText = currentV.toFixed(2);
+        }
+
+        // Render Trail
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0, 242, 255, 0.4)";
+        ctx.setLineDash([5, 5]); // Dashed line for technical look
+        trail.forEach((p, index) => {
+            if (index === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+        });
+        ctx.stroke();
+        ctx.setLineDash([]); // Reset dash
+
+        // Draw Satellite
+        if (sat.active) {
+            ctx.fillStyle = "#fff";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#fff";
+            ctx.beginPath(); 
+            ctx.arc(sat.x, sat.y, 4, 0, Math.PI*2); 
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        requestAnimationFrame(draw);
+    }
+
+    draw();
+</script>
+
+</body>
+</html>

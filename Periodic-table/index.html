@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #0a0a0c; color: white; font-family: sans-serif; transition: 0.8s; display: flex; flex-direction: column; align-items: center; }
+        
+        .periodic-table {
+            display: grid;
+            grid-template-columns: repeat(18, 55px); /* Increased slightly for safety */
+            grid-gap: 5px;
+            margin-top: 20px;
+        }
+
+        .element {
+            width: 55px; height: 55px; /* Symmetrical boxes */
+            border: 1px solid #444;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            cursor: pointer;
+            background: rgba(255,255,255,0.05);
+            /* FIX: Prevents text spill */
+            overflow: hidden; 
+            text-align: center;
+        }
+
+        .element strong {
+            font-size: 16px;
+            line-height: 1;
+        }
+
+        .element span {
+            font-size: 9px; /* Small enough to fit names like 'Beryllium' */
+            width: 100%;
+            display: block;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis; /* Adds '...' if name is too long */
+        }
+
+        .s-block { border-left: 4px solid #ff4444; }
+        .p-block { border-left: 4px solid #00f2ff; }
+        .d-block { border-left: 4px solid #ffcc00; }
+
+        .element:hover { background: white !important; color: black !important; transform: scale(1.1); z-index: 10; }
+
+        #info-panel {
+            margin-top: 30px; padding: 20px; width: 400px;
+            border: 2px solid #333; border-radius: 10px; background: rgba(0,0,0,0.8);
+            text-align: center;
+        }
+        
+        .burn { animation: flicker 0.1s infinite; }
+        @keyframes flicker { 0% { opacity: 0.9; } 50% { opacity: 1; } 100% { opacity: 0.9; } }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin-top:30px;">NEB Chemistry: Flame Test & Reactivity</h2>
+    <p>Click an element to see its <b>Atomic Properties</b> and <b>Flame Color</b>.</p>
+
+    <div class="periodic-table" id="table"></div>
+
+    <div id="info-panel">
+        <h1 id="elName">-</h1>
+        <p id="elDesc">Select an element to begin analysis</p>
+        <div id="flame" style="height:10px; width:100%; border-radius:5px;"></div>
+    </div>
+
+    <script>
+        const elements = [
+            { s: "H",  n: "Hydrogen",  b: "s-block", c: 1,  r: 1, f: "#fff", m: "Non-metal but placed in Group 1." },
+            { s: "He", n: "Helium",    b: "p-block", c: 18, r: 1, f: "#ff99ff", m: "Fully filled 1s orbital (Inert)." },
+            { s: "Li", n: "Lithium",   b: "s-block", c: 1,  r: 2, f: "#ff0000", m: "Gives Crimson Red flame." },
+            { s: "Be", n: "Beryllium", b: "s-block", c: 2,  r: 2, f: "#fff", m: "Alkaline Earth Metal." },
+            { s: "Na", n: "Sodium",    b: "s-block", c: 1,  r: 3, f: "#ffcc00", m: "Gives Golden Yellow flame. Highly reactive." },
+            { s: "Mg", n: "Magnesium", b: "s-block", c: 2,  r: 3, f: "#ffffff", m: "Burns with dazzling white light." },
+            { s: "K",  n: "Potassium", b: "s-block", c: 1,  r: 4, f: "#cc99ff", m: "Gives Lilac (Violet) flame." },
+            { s: "Ca", n: "Calcium",   b: "s-block", c: 2,  r: 4, f: "#ff6600", m: "Gives Brick Red flame." },
+            { s: "Cu", n: "Copper",    b: "d-block", c: 11, r: 4, f: "#00ffcc", m: "Gives Bluish-Green flame." },
+            { s: "Fe", n: "Iron",      b: "d-block", c: 8,  r: 4, f: "#996633", m: "Transition metal, d-block." },
+            { s: "Ne", n: "Neon",      b: "p-block", c: 18, r: 2, f: "#ff3300", m: "Used in glow signs (Noble Gas)." },
+            { s: "Ar", n: "Argon",     b: "p-block", c: 18, r: 3, f: "#9933ff", m: "Provides inert atmosphere for welding." }
+        ];
+
+        const table = document.getElementById('table');
+
+        elements.forEach(el => {
+            const div = document.createElement('div');
+            div.className = `element ${el.b}`;
+            div.style.gridColumn = el.c;
+            div.style.gridRow = el.r;
+            // Wrapped symbol and name to control spacing better
+            div.innerHTML = `<strong>${el.s}</strong><span>${el.n}</span>`;
+
+            div.onclick = () => {
+                document.getElementById('elName').innerText = el.n + " (" + el.s + ")";
+                document.getElementById('elDesc').innerText = el.m;
+                document.getElementById('flame').style.backgroundColor = el.f;
+                document.getElementById('flame').classList.add('burn');
+                document.getElementById('info-panel').style.borderColor = el.f;
+            };
+
+            table.appendChild(div);
+        });
+    </script>
+</body>
+</html>

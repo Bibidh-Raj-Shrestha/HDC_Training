@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; background:#020508; overflow:hidden; font-family:sans-serif;">
+
+<div style="position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.85); padding:20px; border:1px solid #7cff4d; border-radius:10px; color:white; width:280px; z-index:10;">
+    <h3 style="margin:0; color:#7cff4d;">Micro-Ecosystem Lab</h3>
+    <hr style="border:0; border-top:1px solid #333; margin:10px 0;">
+    
+    <div style="font-size:13px; margin-bottom:15px;">
+        Population: <b id="popCount">0</b> | Food: <b id="foodCount">0</b>
+    </div>
+
+    <button onclick="spawnSuper()" style="width:100%; background:#7cff4d; border:none; padding:8px; font-weight:bold; cursor:pointer; margin-bottom:5px;">SPAWN 20 CELLS</button>
+    <button onclick="dropVirus()" style="width:100%; background:#ff4d4d; border:none; padding:8px; font-weight:bold; color:white; cursor:pointer;">DROP VIRUS (RED)</button>
+    
+    <p style="font-size:11px; color:#aaa; margin-top:10px;">Cells lose energy as they move. They must eat Green Dots to reproduce.</p>
+</div>
+
+<canvas id="ecoCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById('ecoCanvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let cells = [];
+    let food = [];
+    let virus = null;
+
+    class Cell {
+        constructor(x, y, isSuper = false) {
+            this.x = x || Math.random() * canvas.width;
+            this.y = y || Math.random() * canvas.height;
+            this.energy = isSuper ? 150 : 100;
+            this.speed = isSuper ? 3 : 2;
+            this.color = isSuper ? "#00f2ff" : "#7cff4d";
+            this.angle = Math.random() * Math.PI * 2;
+        }
+
+        update() {
+            // Movement logic
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+            if(Math.random() < 0.05) this.angle += (Math.random() - 0.5);
+
+            // Screen Wrap
+            this.x = (this.x + canvas.width) % canvas.width;
+            this.y = (this.y + canvas.height) % canvas.height;
+
+            // Metabolism: Lose energy over time
+            this.energy -= 0.2;
+
+            // Interaction with Virus
+            if (virus && Math.hypot(this.x - virus.x, this.y - virus.y) < virus.r) {
+                this.energy -= 5; // Virus drains energy
+            }
+        }
+
+        draw() {
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = this.color;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function spawnSuper() {
+        for(let i=0; i<20; i++) cells.push(new Cell(null, null, true));
+    }
+
+    function dropVirus() {
+        virus = { x: Math.random()*canvas.width, y: Math.random()*canvas.height, r: 80 };
+        setTimeout(() => { virus = null; }, 5000); // Virus disappears after 5s
+    }
+
+    function spawnFood() {
+        if(food.length < 100) food.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height});
+    }
+
+    function animate() {
+        ctx.fillStyle = "rgba(2, 5, 8, 0.4)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        spawnFood();
+
+        // Draw Virus Zone
+        if(virus) {
+            ctx.fillStyle = "rgba(255, 77, 77, 0.2)";
+            ctx.beginPath(); ctx.arc(virus.x, virus.y, virus.r, 0, Math.PI*2); ctx.fill();
+        }
+
+        // Draw Food
+        ctx.fillStyle = "#fff";
+        food.forEach(f => ctx.fillRect(f.x, f.y, 3, 3));
+
+        // Update & Draw Cells
+        for(let i = cells.length - 1; i >= 0; i--) {
+            let c = cells[i];
+            c.update();
+            c.draw();
+
+            // Check for Food Consumption
+            food.forEach((f, fIndex) => {
+                if(Math.hypot(c.x - f.x, c.y - f.y) < 10) {
+                    c.energy += 30;
+                    food.splice(fIndex, 1);
+                }
+            });
+
+            // Reproduce if energy is high
+            if(c.energy > 200) {
+                c.energy = 100;
+                cells.push(new Cell(c.x, c.y, c.color === "#00f2ff"));
+            }
+
+            // Death logic
+            if(c.energy <= 0) cells.splice(i, 1);
+        }
+
+        document.getElementById('popCount').innerText = cells.length;
+        document.getElementById('foodCount').innerText = food.length;
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+</script>
+</body>
+</html>

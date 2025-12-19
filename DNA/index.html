@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { background: #050508; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; overflow-x: hidden; }
+        
+        .input-section { margin-top: 30px; text-align: center; z-index: 10; }
+        input { padding: 10px; font-size: 18px; border-radius: 5px; border: none; width: 250px; }
+
+        #dna-container {
+            margin-top: 50px;
+            position: relative;
+            width: 200px;
+            height: 500px;
+            perspective: 1000px; /* Gives the 3D depth effect */
+        }
+
+        .base-pair {
+            position: absolute;
+            width: 100%;
+            height: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transform-style: preserve-3d;
+            animation: rotateDNA 4s linear infinite;
+        }
+
+        .node {
+            width: 20px; height: 20px;
+            border-radius: 50%;
+            box-shadow: 0 0 10px currentColor;
+        }
+
+        .bond {
+            flex-grow: 1;
+            height: 2px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        @keyframes rotateDNA {
+            from { transform: rotateY(0deg); }
+            to { transform: rotateY(360deg); }
+        }
+
+        /* Color Coding for Grade 12 Biology */
+        .A { color: #ff4444; background: #ff4444; } /* Adenine - Red */
+        .T { color: #00f2ff; background: #00f2ff; } /* Thymine - Cyan */
+        .G { color: #ffcc00; background: #ffcc00; } /* Guanine - Yellow */
+        .C { color: #aa44ff; background: #aa44ff; } /* Cytosine - Purple */
+    </style>
+</head>
+<body>
+
+    <div class="input-section">
+        <h2>DNA Sequence Visualizer</h2>
+        <input type="text" id="nameInput" placeholder="Type your name..." oninput="generateDNA()">
+        <p id="sequence-text" style="font-family: monospace; color: #888; margin-top: 10px;"></p>
+    </div>
+
+    <div id="dna-container"></div>
+
+    <script>
+        function generateDNA() {
+            const input = document.getElementById('nameInput').value.toUpperCase();
+            const container = document.getElementById('dna-container');
+            const seqDisplay = document.getElementById('sequence-text');
+            container.innerHTML = '';
+            
+            // Map alphabet to DNA bases
+            const dnaMap = { 'A':'A', 'B':'T', 'C':'G', 'D':'C', 'E':'A', 'F':'T', 'G':'G', 'H':'C', 'I':'A', 'J':'T', 'K':'G', 'L':'C', 'M':'A', 'N':'T', 'O':'G', 'P':'C', 'Q':'A', 'R':'T', 'S':'G', 'T':'C', 'U':'A', 'V':'T', 'W':'G', 'X':'C', 'Y':'A', 'Z':'T' };
+            const pairs = { 'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G' };
+
+            let fullSeq = "";
+
+            for (let i = 0; i < input.length; i++) {
+                let char = input[i];
+                let base1 = dnaMap[char] || 'A';
+                let base2 = pairs[base1];
+                fullSeq += base1;
+
+                // Create the 3D row
+                const row = document.createElement('div');
+                row.className = 'base-pair';
+                row.style.top = (i * 30) + 'px';
+                row.style.animationDelay = (i * 0.2) + 's'; // Creates the "Spiral" wave effect
+
+                row.innerHTML = `
+                    <div class="node ${base1}"></div>
+                    <div class="bond"></div>
+                    <div class="node ${base2}"></div>
+                `;
+                container.appendChild(row);
+            }
+            seqDisplay.innerText = "Calculated Sequence: " + fullSeq;
+        }
+
+        // Initialize with a default name
+        document.getElementById('nameInput').value = "NEPAL";
+        generateDNA();
+    </script>
+</body>
+</html>
