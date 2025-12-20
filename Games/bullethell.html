@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; background:#000; overflow:hidden;">
+<canvas id="c"></canvas>
+<script>
+    const ctx = c.getContext('2d');
+    let p = {x:400, y:300}, enemies = [], keys = {};
+    
+    // 1. Setup & Input
+    c.width = window.innerWidth; c.height = window.innerHeight;
+    window.onkeydown = e => keys[e.key] = 1;
+    window.onkeyup = e => keys[e.key] = 0;
+
+    function spawn() {
+        enemies.push({x: Math.random()*c.width, y:0}); 
+    }
+    setInterval(spawn, 500);
+
+    function draw() {
+        ctx.fillStyle = "black"; ctx.fillRect(0,0,c.width,c.height);
+        
+        // 2. Move Player
+        if(keys.w) p.y -= 5; if(keys.s) p.y += 5;
+        if(keys.a) p.x -= 5; if(keys.d) p.x += 5;
+        ctx.fillText("😎", p.x, p.y);
+
+        // 3. Enemy Follow Logic (The Core Lesson)
+        enemies.forEach((en, i) => {
+            en.x += (p.x - en.x) * 0.02; // Move 2% of the distance every frame
+            en.y += (p.y - en.y) * 0.02;
+            
+            ctx.fillText("👾", en.x, en.y);
+
+            // Simple Collision
+            if(Math.hypot(p.x-en.x, p.y-en.y) < 20) {
+                alert("Caught!"); enemies = []; p = {x:400,y:300};
+            }
+        });
+        requestAnimationFrame(draw);
+    }
+    ctx.font = "30px Arial";
+    draw();
+</script>
+</body>
+</html>

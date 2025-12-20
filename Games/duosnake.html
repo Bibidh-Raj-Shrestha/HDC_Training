@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0; background:#111; text-align:center; color:white;">
+    <p>P1: WASD | P2: Arrows</p>
+    <canvas id="cv" width="400" height="400" style="border:2px solid white;"></canvas>
+<script>
+    const ctx = cv.getContext('2d');
+    let s1 = [{x:10, y:10}], d1 = {x:1, y:0};
+    let s2 = [{x:30, y:30}], d2 = {x:-1, y:0};
+    let apple = {x:20, y:20};
+
+    window.onkeydown = e => {
+    // Player 1 (WASD)
+    if(e.key=='w' && d1.y==0) d1={x:0, y:-1}; // Up
+    if(e.key=='s' && d1.y==0) d1={x:0, y:1};  // Down
+    if(e.key=='a' && d1.x==0) d1={x:-1, y:0}; // Left (New)
+    if(e.key=='d' && d1.x==0) d1={x:1, y:0};  // Right (New)
+
+    // Player 2 (Arrows)
+    if(e.key=='ArrowUp' && d2.y==0) d2={x:0, y:-1}; 
+    if(e.key=='ArrowDown' && d2.y==0) d2={x:0, y:1};
+    if(e.key=='ArrowLeft' && d2.x==0) d2={x:-1, y:0}; // Left (New)
+    if(e.key=='ArrowRight' && d2.x==0) d2={x:1, y:0}; // Right (New)
+};
+
+    function move(s, d) {
+        let head = {x: s[0].x + d.x, y: s[0].y + d.y};
+        s.unshift(head); // Add new head to start of array
+        if(head.x == apple.x && head.y == apple.y) {
+            apple = {x: Math.floor(Math.random()*40), y: Math.floor(Math.random()*40)};
+        } else {
+            s.pop(); // Remove tail if no food eaten
+        }
+    }
+
+    function game() {
+        move(s1, d1); move(s2, d2);
+        
+        ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
+        ctx.fillStyle = "red"; ctx.fillRect(apple.x*10, apple.y*10, 10, 10);
+        
+        ctx.fillStyle = "lime"; s1.forEach(b => ctx.fillRect(b.x*10, b.y*10, 8, 8));
+        ctx.fillStyle = "cyan"; s2.forEach(b => ctx.fillRect(b.x*10, b.y*10, 8, 8));
+        
+        // Basic death check
+        if(s1[0].x < 0 || s1[0].x > 40) location.reload();
+    }
+    setInterval(game, 100);
+</script>
+</body>
+</html>
