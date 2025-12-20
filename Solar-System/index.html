@@ -1,124 +1,53 @@
 <!DOCTYPE html>
 <html>
-<body style="margin:0; background:#00050a; color:white; font-family:sans-serif; overflow:hidden;">
+<body style="margin:0; background:#000; overflow:hidden; color:#0ff; font-family:sans-serif;">
 
-<div style="position:absolute; top:20px; left:20px; background:rgba(0,0,0,0.8); padding:20px; border:1px solid #00f2ff; border-radius:10px; width:260px; z-index:10;">
-    <h3 style="margin:0 0 15px 0; color:#00f2ff; text-align:center;">Earth Satellite Lab</h3>
-    
-    <label style="font-size: 14px;">Launch Velocity: <b id="sliderVal" style="color:#00f2ff;">8.0</b> km/s</label>
-    <input type="range" id="speedInput" min="1" max="15" step="0.1" value="8" style="width:100%; margin: 10px 0;" oninput="updateSliderReadout()">
-    
-    <button onclick="launch()" style="width:100%; padding:12px; cursor:pointer; background:#00f2ff; border:none; border-radius:5px; font-weight:bold;">LAUNCH ROCKET</button>
-    
-    <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
-    
-    <div style="font-size:14px; line-height:1.8;">
-        Live Speed: <span id="vDisp" style="color:#4ade80">0.00</span> km/s<br>
-        Status: <b id="status" style="color:#ffcc00">READY</b>
-    </div>
+<div style="position:absolute; padding:20px;">
+    <b>Speed: <span id="v">8</span></b><br>
+    <input type="range" id="s" min="1" max="15" step="0.1" value="8" oninput="v.innerText=value">
+    <button onclick="launch()">LAUNCH</button>
 </div>
 
-<canvas id="simCanvas"></canvas>
+<canvas id="c"></canvas>
 
 <script>
-    const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+    const ctx = c.getContext('2d');
+    let sat = { active: false };
+    const earth = { x: 0, y: 0, mass: 5000, r: 50 };
 
-    // 1. Core Physics Constants
-    const earth = { 
-        x: canvas.width/2, 
-        y: canvas.height/2, 
-        mass: 5000, 
-        radius: 50 
-    };
-
-    let sat = { x: 0, y: 0, vx: 0, vy: 0, active: false };
-    let trail = [];
-
-    // UI: Update the number on the screen as you slide
-    function updateSliderReadout() {
-        document.getElementById('sliderVal').innerText = document.getElementById('speedInput').value;
-    }
-
-    // 2. The Launch Logic
     function launch() {
-        const speed = parseFloat(document.getElementById('speedInput').value);
-        sat.x = earth.x;
-        sat.y = earth.y - 130; // 130 pixels above Earth center
-        sat.vx = speed; 
-        sat.vy = 0;
-        sat.active = true;
-        trail = [];
-        document.getElementById('status').innerText = "IN ORBIT";
-        document.getElementById('status').style.color = "#4ade80";
+        // Reset position to above Earth and set horizontal speed
+        sat = { x: c.width/2, y: c.height/2 - 130, vx: +s.value, vy: 0, active: true };
     }
 
     function draw() {
-        // Clear screen with a slight fade (creates the motion trail effect)
-        ctx.fillStyle = "rgba(0, 5, 10, 0.2)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        c.width = innerWidth; c.height = innerHeight; // Clear & Resize
+        earth.x = c.width/2; earth.y = c.height/2;
 
-        // 3. Draw Earth
-        ctx.beginPath();
-        ctx.arc(earth.x, earth.y, earth.radius, 0, Math.PI*2);
-        ctx.fillStyle = "#2271B3";
-        ctx.fill();
-        ctx.strokeStyle = "white";
-        ctx.stroke();
+        // 1. Draw Earth
+        ctx.beginPath(); ctx.arc(earth.x, earth.y, earth.r, 0, 7);
+        ctx.fillStyle = '#25a'; ctx.fill();
 
         if (sat.active) {
-            // 4. Calculate Gravity (Math from Grade 12 Physics)
-            let dx = earth.x - sat.x; // Horizontal distance
-            let dy = earth.y - sat.y; // Vertical distance
-            let dSq = dx*dx + dy*dy;  // Distance squared (r^2)
-            let d = Math.sqrt(dSq);   // Distance (r)
+            // 2. The Physics (Distance and Force)
+            let dx = earth.x - sat.x, dy = earth.y - sat.y;
+            let d = Math.hypot(dx, dy);
+            let acc = earth.mass / (d * d); // Inverse Square Law
 
-            // Acceleration = Mass / r^2
-            let acceleration = earth.mass / dSq;
-            
-            // Update velocity based on direction to Earth
-            sat.vx += (dx/d) * acceleration;
-            sat.vy += (dy/d) * acceleration;
+            // 3. Update Velocity and Position
+            sat.vx += (dx/d) * acc;
+            sat.vy += (dy/d) * acc;
+            sat.x += sat.vx; sat.y += sat.vy;
 
-            // Move the satellite
-            sat.x += sat.vx;
-            sat.y += sat.vy;
+            // 4. Draw Satellite
+            ctx.fillStyle = 'white';
+            ctx.fillRect(sat.x-3, sat.y-3, 6, 6);
 
-            trail.push({x: sat.x, y: sat.y});
-            if(trail.length > 100) trail.shift();
-
-            // Check for Crash or Escape
-            if (d < earth.radius) {
-                sat.active = false;
-                document.getElementById('status').innerText = "CRASHED!";
-                document.getElementById('status').style.color = "#ff4444";
-            }
-            if (d > canvas.width) {
-                sat.active = false;
-                document.getElementById('status').innerText = "ESCAPED!";
-                document.getElementById('status').style.color = "#38bdf8";
-            }
-
-            // Update UI Speed
-            document.getElementById('vDisp').innerText = Math.sqrt(sat.vx**2 + sat.vy**2).toFixed(2);
+            // Crash check
+            if (d < earth.r) sat.active = false;
         }
-
-        // 5. Draw the path and the satellite
-        ctx.beginPath();
-        ctx.strokeStyle = "rgba(0, 242, 255, 0.5)";
-        trail.forEach(p => ctx.lineTo(p.x, p.y));
-        ctx.stroke();
-
-        if (sat.active) {
-            ctx.fillStyle = "white";
-            ctx.beginPath(); ctx.arc(sat.x, sat.y, 4, 0, Math.PI*2); ctx.fill();
-        }
-
         requestAnimationFrame(draw);
     }
-
     draw();
 </script>
 </body>
