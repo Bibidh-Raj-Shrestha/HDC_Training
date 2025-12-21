@@ -16,26 +16,35 @@
     }
     setInterval(spawn, 500);
 
+    let startTime = Date.now();
     function draw() {
+       
         ctx.fillStyle = "black"; ctx.fillRect(0,0,c.width,c.height);
         
         // 2. Move Player
-        if(keys.w) p.y -= 5; if(keys.s) p.y += 5;
-        if(keys.a) p.x -= 5; if(keys.d) p.x += 5;
+        if(keys.w) p.y -= 5; 
+        if(keys.s) p.y += 5;
+        if(keys.a) p.x -= 5; 
+        if(keys.d) p.x += 5;
         ctx.fillText("😎", p.x, p.y);
 
         // 3. Enemy Follow Logic (The Core Lesson)
-        enemies.forEach((en, i) => {
-            en.x += (p.x - en.x) * 0.02; // Move 2% of the distance every frame
+        
+        enemies.forEach((en) => {
+            en.x += (p.x - en.x) * 0.02;
             en.y += (p.y - en.y) * 0.02;
-            
+
             ctx.fillText("👾", en.x, en.y);
 
-            // Simple Collision
-            if(Math.hypot(p.x-en.x, p.y-en.y) < 20) {
-                alert("Caught!"); enemies = []; p = {x:400,y:300};
+            if (Math.hypot(p.x - en.x, p.y - en.y) < 20) {
+                const seconds = Math.floor((Date.now() - startTime) / 1000);
+                alert("Caught! \nSurvived: " + seconds + " seconds");
+
+                enemies = [];
+                p = { x: 400, y: 300 };
             }
         });
+
         requestAnimationFrame(draw);
     }
     ctx.font = "30px Arial";
