@@ -1,53 +1,161 @@
 <!DOCTYPE html>
 <html>
-<body style="margin:0; background:#000; overflow:hidden;">
+<head>
+    <style>
+        body { margin: 0; background: #050a15; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(5, 10, 21, 0.85); backdrop-filter: blur(12px); z-index: 20;
+        }
+        .card {
+            background: rgba(20, 20, 30, 0.8); padding: 40px; border-radius: 24px;
+            border: 1px solid rgba(0, 242, 255, 0.2); text-align: center;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5); width: 350px;
+        }
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 20px 0;
+            background: rgba(255, 255, 255, 0.03); padding: 15px; border-radius: 12px;
+        }
+        .stat-box { font-size: 12px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-val { font-size: 20px; color: #fff; font-weight: bold; display: block; }
+        button {
+            background: linear-gradient(45deg, #00f2ff, #0066ff); color: white; border: none; 
+            padding: 15px; font-size: 18px; font-weight: bold; border-radius: 12px; 
+            cursor: pointer; transition: 0.3s; width: 100%;
+        }
+        button:hover { filter: brightness(1.2); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 242, 255, 0.4); }
+        .kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #00f2ff; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div style="position:absolute; top:20px; width:100%; text-align:center; pointer-events:none; z-index:10;">
+    <div style="font-size: 12px; color: #00f2ff; opacity: 0.6; letter-spacing: 2px;">RECORD: <span id="highScore">0</span>S</div>
+    <div id="scoreDisplay" style="font-size: 50px; font-weight: 900;">0</div>
+</div>
+
+<div id="startUI" class="overlay">
+    <div class="card">
+        <h1 style="color:#00f2ff; margin:0; letter-spacing:2px;">NEON SURVIVAL</h1>
+        <p style="font-size: 13px; color: #aaa; margin: 15px 0;">Use <span class="kbd">WASD</span> to dodge the swarm.</p>
+        <button onclick="startGame()">INITIALIZE</button>
+    </div>
+</div>
+
+<div id="gameOverUI" class="overlay" style="display:none;">
+    <div class="card" style="border-color: #ff00ff;">
+        <h1 style="color:#ff00ff; margin:0; font-size: 32px;">MISSION FAILED</h1>
+        <div id="rankLabel" style="color: #ffcc00; font-weight: bold; margin-top: 5px; font-size: 14px;">RANK: NOVICE</div>
+        
+        <div class="stats-grid">
+            <div class="stat-box">Survived<span class="stat-val" id="finalTime">0s</span></div>
+            <div class="stat-box">Close Calls<span class="stat-val" id="closeCalls">0</span></div>
+            <div class="stat-box">Best Time<span class="stat-val" id="bestStat">0s</span></div>
+            <div class="stat-box">Intensity<span class="stat-val" id="intensity">0%</span></div>
+        </div>
+
+        <p id="newRecord" style="color:#4ade80; display:none; font-size: 14px; margin-bottom: 15px;">★ NEW WORLD RECORD ★</p>
+        <button onclick="startGame()" style="background: linear-gradient(45deg, #ff00ff, #8000ff);">REBOOT SYSTEM</button>
+    </div>
+</div>
+
 <canvas id="c"></canvas>
+
 <script>
     const ctx = c.getContext('2d');
-    let p = {x:400, y:300}, enemies = [], keys = {};
-    
-    // 1. Setup & Input
-    c.width = window.innerWidth; c.height = window.innerHeight;
-    window.onkeydown = e => keys[e.key] = 1;
-    window.onkeyup = e => keys[e.key] = 0;
+    let p, enemies, score, keys = {}, isRunning = false, startTime, spawnTimer, nearMisses = 0;
+
+    let best = localStorage.getItem('neonBest') || 0;
+    highScore.innerText = best;
+
+    window.onresize = () => { c.width = innerWidth; c.height = innerHeight; };
+    window.onresize();
+    window.onkeydown = e => keys[e.key.toLowerCase()] = 1;
+    window.onkeyup = e => keys[e.key.toLowerCase()] = 0;
+
+    function getRank(time) {
+        if (time < 10) return "ROOKIE";
+        if (time < 30) return "SURVIVOR";
+        if (time < 60) return "ELITE DODGER";
+        return "CYBER LEGEND";
+    }
+
+    function startGame() {
+        p = { x: c.width/2, y: c.height/2, speed: 6, emoji: "😎" };
+        enemies = []; score = 0; nearMisses = 0;
+        isRunning = true; startTime = Date.now();
+        startUI.style.display = gameOverUI.style.display = "none";
+        clearTimeout(spawnTimer);
+        spawn();
+    }
 
     function spawn() {
-        enemies.push({x: Math.random()*c.width, y:0}); 
-    }
-    setInterval(spawn, 500);
-
-    let startTime = Date.now();
-    function draw() {
-       
-        ctx.fillStyle = "black"; ctx.fillRect(0,0,c.width,c.height);
-        
-        // 2. Move Player
-        if(keys.w) p.y -= 5; 
-        if(keys.s) p.y += 5;
-        if(keys.a) p.x -= 5; 
-        if(keys.d) p.x += 5;
-        ctx.fillText("😎", p.x, p.y);
-
-        // 3. Enemy Follow Logic (The Core Lesson)
-        
-        enemies.forEach((en) => {
-            en.x += (p.x - en.x) * 0.02;
-            en.y += (p.y - en.y) * 0.02;
-
-            ctx.fillText("👾", en.x, en.y);
-
-            if (Math.hypot(p.x - en.x, p.y - en.y) < 20) {
-                const seconds = Math.floor((Date.now() - startTime) / 1000);
-                alert("Caught! \nSurvived: " + seconds + " seconds");
-
-                enemies = [];
-                p = { x: 400, y: 300 };
-            }
+        if(!isRunning) return;
+        let angle = Math.random() * Math.PI * 2;
+        enemies.push({ 
+            x: p.x + Math.cos(angle) * c.width, 
+            y: p.y + Math.sin(angle) * c.height, 
+            s: 2.2 + Math.random() + (score/20) 
         });
+        spawnTimer = setTimeout(spawn, Math.max(180, 700 - (score * 10)));
+    }
 
+    function update() {
+        if(!isRunning) return;
+        score = Math.floor((Date.now() - startTime) / 1000);
+        scoreDisplay.innerText = score;
+
+        if(keys.w) p.y -= p.speed; if(keys.s) p.y += p.speed;
+        if(keys.a) p.x -= p.speed; if(keys.d) p.x += p.speed;
+
+        let scaring = false;
+        enemies.forEach(en => {
+            en.x += (p.x - en.x) * (en.s / 100);
+            en.y += (p.y - en.y) * (en.s / 100);
+            let d = Math.hypot(p.x - en.x, p.y - en.y);
+            if(d < 80) { scaring = true; if(Math.random() < 0.05) nearMisses++; }
+            if(d < 28) die();
+        });
+        p.emoji = scaring ? "😱" : "😎";
+    }
+
+    function die() {
+        isRunning = false;
+        gameOverUI.style.display = "flex";
+        finalTime.innerText = score + "s";
+        closeCalls.innerText = nearMisses;
+        bestStat.innerText = best + "s";
+        intensity.innerText = Math.min(100, score * 2) + "%";
+        rankLabel.innerText = "RANK: " + getRank(score);
+
+        if(score > best) {
+            best = score; localStorage.setItem('neonBest', best);
+            highScore.innerText = best; newRecord.style.display = "block";
+        } else { newRecord.style.display = "none"; }
+    }
+
+    function draw() {
+        ctx.fillStyle = "#050a15";
+        ctx.fillRect(0, 0, c.width, c.height);
+        
+        ctx.strokeStyle = "rgba(0, 242, 255, 0.05)";
+        for(let i=0; i<c.width; i+=60) { ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,c.height); ctx.stroke(); }
+        for(let i=0; i<c.height; i+=60) { ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(c.width,i); ctx.stroke(); }
+
+        if(isRunning || gameOverUI.style.display == "flex") {
+            ctx.font = "38px Arial"; ctx.textAlign = "center";
+            enemies.forEach(en => {
+                ctx.shadowBlur = 10; ctx.shadowColor = "#f0f";
+                ctx.fillText("👾", en.x, en.y+15);
+            });
+            ctx.shadowColor = p.emoji == "😱" ? "red" : "#0ff";
+            ctx.fillText(p.emoji, p.x, p.y+15);
+            ctx.shadowBlur = 0;
+        }
+        update();
         requestAnimationFrame(draw);
     }
-    ctx.font = "30px Arial";
     draw();
 </script>
 </body>
