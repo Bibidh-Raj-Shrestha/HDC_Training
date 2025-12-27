@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        :root { --accent: #00f2ff; --panel: #0a0f19; --warn: #f1c40f; --crit: #ff4757; }
+        body { margin: 0; background: #000; overflow: hidden; color: white; font-family: 'Inter', sans-serif; display: flex; }
+        
+        /* Fixed Sidebar */
+        #sidebar {
+            width: 360px; height: 100vh; background: var(--panel);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            padding: 40px 30px; box-sizing: border-box; display: flex; flex-direction: column; z-index: 10;
+        }
+
+        h1 { font-size: 26px; letter-spacing: 4px; margin: 0; color: var(--accent); font-weight: 900; }
+        .sub-header { font-size: 11px; color: #555; letter-spacing: 2px; margin-bottom: 40px; }
+
+        .control-group { margin-bottom: 30px; }
+        .label { font-size: 14px; color: #aaa; text-transform: uppercase; font-weight: 600; margin-bottom: 12px; display: block; }
+        
+        .warp-group, .selector { display: flex; gap: 8px; }
+        .warp-btn, .body-btn {
+            flex: 1; padding: 14px; background: #151a24; border: 1px solid #333;
+            color: #999; font-size: 13px; cursor: pointer; border-radius: 8px; transition: 0.2s; font-weight: bold;
+        }
+        .body-btn.active { background: var(--accent); color: #000; border-color: white; }
+        .warp-btn.active { background: var(--warn); color: #000; border-color: white; }
+
+        input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; height: 10px; margin-top: 10px;}
+
+        .telemetry-card {
+            background: rgba(0,0,0,0.8); padding: 25px; border-radius: 15px; 
+            border: 1px solid rgba(255,255,255,0.1); font-family: 'Courier New', Courier, monospace; 
+            font-size: 18px; line-height: 1.8; color: #0f0;
+        }
+
+        button#launch {
+            width: 100%; padding: 20px; background: var(--accent); color: #000;
+            border: none; border-radius: 12px; font-size: 20px; font-weight: 900;
+            cursor: pointer; transition: 0.3s; margin-top: auto; text-transform: uppercase;
+        }
+        
+        /* The Canvas Container ensures no overlap */
+        #canvas-container { flex-grow: 1; height: 100vh; position: relative; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <h1>AETHE<span class="brand-accent">RIS</span></h1>
+    <div class="sub-header">SYSTEM: ORBITAL TRACKING</div>
+    
+    <div class="control-group">
+        <span class="label">Celestial Object</span>
+        <div class="selector">
+            <button class="body-btn active" onclick="setBody('earth', this)">EARTH</button>
+            <button class="body-btn" onclick="setBody('mars', this)">MARS</button>
+            <button class="body-btn" onclick="setBody('moon', this)">MOON</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <span class="label">Launch Speed: <span id="vDisp" style="color:var(--accent)">8.0</span> km/s</span>
+        <input type="range" id="vIn" min="1" max="20" step="0.1" value="8" oninput="vDisp.innerText=parseFloat(value).toFixed(1); predict()">
+    </div>
+
+    <div class="control-group">
+        <span class="label">Time Compression</span>
+        <div class="warp-group">
+            <button class="warp-btn active" onclick="setTimeWarp(1, this)">1x</button>
+            <button class="warp-btn" onclick="setTimeWarp(5, this)">5x</button>
+            <button class="warp-btn" onclick="setTimeWarp(25, this)">25x</button>
+        </div>
+    </div>
+
+    <div class="control-group">
+        <span class="label">Live Telemetry</span>
+        <div class="telemetry-card" id="telem">
+            STANDBY...
+        </div>
+    </div>
+
+    <button id="launch" onclick="launch()">INITIATE INJECTION</button>
+</div>
+
+<div id="canvas-container">
+    <canvas id="c"></canvas>
+</div>
+
+<script>
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    let sat = { active: false, trail: [] };
+    let prediction = [];
+    let willImpact = false;
+    let zoom = 1, timeWarp = 1;
+    
+    const bodies = {
+        earth: { mass: 6500, r: 85, color: '#3a7bd5', atmos: 'rgba(58, 123, 213, 0.2)' },
+        mars: { mass: 3500, r: 65, color: '#ff4b2b', atmos: 'rgba(255, 75, 43, 0.15)' },
+        moon: { mass: 1200, r: 50, color: '#bdc3c7', atmos: 'rgba(255, 255, 255, 0.05)' }
+    };
+    let currentBody = bodies.earth;
+
+    function setBody(key, btn) {
+        currentBody = bodies[key];
+        document.querySelectorAll('.body-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        sat.active = false; zoom = 1;
+        predict();
+    }
+
+    function setTimeWarp(factor, btn) {
+        timeWarp = factor;
+        document.querySelectorAll('.warp-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+
+    function predict() {
+        prediction = []; willImpact = false;
+        let px = 0, py = -currentBody.r - 100;
+        let pvx = parseFloat(vIn.value), pvy = 0;
+        for(let i=0; i<1000; i++) {
+            let d = Math.hypot(px, py);
+            let force = currentBody.mass / (d * d);
+            pvx -= (px/d) * force; pvy -= (py/d) * force;
+            px += pvx; py += pvy;
+            prediction.push({x: px, y: py});
+            if (d < currentBody.r) { willImpact = true; break; }
+        }
+    }
+
+    function launch() {
+        sat = { x: 0, y: -currentBody.r - 100, vx: parseFloat(vIn.value), vy: 0, active: true, trail: [] };
+    }
+
+    function update() {
+        // Adjust canvas to its parent container
+        const container = document.getElementById('canvas-container');
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        // NOW CENTER IS ALWAYS HALF OF CANVAS WIDTH/HEIGHT
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+
+        ctx.fillStyle = '#010205';
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        // Optional: Subtle Grid for orientation
+        ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0); ctx.lineTo(centerX, canvas.height);
+        ctx.moveTo(0, centerY); ctx.lineTo(canvas.width, centerY);
+        ctx.stroke();
+
+        if (sat.active) {
+            for (let i = 0; i < timeWarp; i++) {
+                let d = Math.hypot(sat.x, sat.y);
+                let force = currentBody.mass / (d * d);
+                sat.vx -= (sat.x/d) * force;
+                sat.vy -= (sat.y/d) * force;
+                sat.x += sat.vx; sat.y += sat.vy;
+                sat.trail.push({x: sat.x, y: sat.y});
+                if(sat.trail.length > 500) sat.trail.shift();
+                if (d < currentBody.r) { sat.active = false; break; }
+            }
+        }
+
+        // Camera
+        if (sat.active) {
+            let dist = Math.hypot(sat.x, sat.y);
+            let targetZoom = Math.min(1, (canvas.height * 0.45) / dist);
+            zoom += (targetZoom - zoom) * 0.1;
+        } else { zoom += (1 - zoom) * 0.1; }
+
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.scale(zoom, zoom);
+
+        // Planet
+        let grad = ctx.createRadialGradient(0, 0, currentBody.r, 0, 0, currentBody.r + 70);
+        grad.addColorStop(0, currentBody.atmos); grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath(); ctx.arc(0, 0, currentBody.r + 70, 0, 7); ctx.fill();
+        ctx.beginPath(); ctx.arc(0, 0, currentBody.r, 0, 7);
+        ctx.fillStyle = currentBody.color; ctx.fill();
+
+        // Path
+        ctx.lineWidth = 2 / zoom;
+        if(!sat.active) {
+            ctx.beginPath();
+            ctx.setLineDash([8/zoom, 8/zoom]);
+            ctx.strokeStyle = willImpact ? 'rgba(255, 71, 87, 0.4)' : 'rgba(255,255,255,0.15)';
+            prediction.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.stroke();
+            ctx.setLineDash([]);
+        } else {
+            ctx.beginPath();
+            ctx.strokeStyle = '#00f2ff';
+            sat.trail.forEach(p => ctx.lineTo(p.x, p.y));
+            ctx.stroke();
+            ctx.fillStyle = 'white';
+            ctx.beginPath(); ctx.arc(sat.x, sat.y, 5 / zoom, 0, 7); ctx.fill();
+        }
+        ctx.restore();
+
+        // Telemetry Update
+        if(sat.active) {
+            const v = Math.hypot(sat.vx, sat.vy);
+            const d = Math.hypot(sat.x, sat.y);
+            const status = (0.5 * v * v - currentBody.mass/d) < 0 ? "STABLE" : "ESCAPE";
+            telem.innerHTML = `STATUS: ${status}<br>VEL: ${v.toFixed(2)} km/s<br>ALT: ${(d-currentBody.r).toFixed(0)} km`;
+        } else {
+            telem.innerHTML = willImpact ? "<span style='color:var(--crit)'>⚠ IMPACT</span>" : "<span style='color:var(--accent)'>READY</span>";
+        }
+        requestAnimationFrame(update);
+    }
+    predict(); update();
+</script>
+</body>
+</html>
