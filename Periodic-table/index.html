@@ -1,52 +1,187 @@
 <!DOCTYPE html>
 <html>
-<body style="background:#0a0a0c; color:white; font-family:sans-serif; text-align:center;">
+<head>
+    <style>
+        :root { --accent: #00f2ff; --bg-dark: #05070a; }
+        body { 
+            margin: 0; background: var(--bg-dark); color: white; 
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex; flex-direction: column; align-items: center; padding: 40px 0;
+        }
 
-    <h2 style="color:#00f2ff;">Chemistry Flame Lab</h2>
-    <p style="font-size:14px; color:#888;">Select an element to test its energy emission.</p>
-    
-    <div id="table" style="display:grid; grid-template-columns:repeat(18, 45px); grid-gap:5px; justify-content:center; margin:30px;"></div>
+        #ui-wrapper { display: flex; flex-direction: column; align-items: center; width: 95%; max-width: 1200px; }
 
-    <div id="panel" style="border:2px solid #333; padding:20px; display:inline-block; width:320px; border-radius:15px; background:#111;">
-        <h2 id="name" style="margin:0;">-</h2>
-        <p id="desc">Select a metal for the flame test.</p>
-        <div id="flame" style="height:15px; border-radius:10px; transition:0.3s;"></div>
+        /* Periodic Table Layout */
+        #table-container {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 25px; border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 30px; backdrop-filter: blur(10px);
+        }
+        #table {
+            display: grid;
+            grid-template-columns: repeat(18, 52px);
+            grid-template-rows: repeat(7, 55px);
+            grid-gap: 6px;
+        }
+
+        .element-btn {
+            background: #12141d; border: 1px solid #333; color: #666;
+            border-radius: 6px; cursor: default; transition: 0.2s;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 13px; position: relative;
+        }
+        /* Style for elements that HAVE flame data */
+        .element-btn.active-metal {
+            cursor: pointer; border: 1px solid #444; color: #fff;
+            background: #1a1c26;
+        }
+        .element-btn.active-metal:hover { 
+            border-color: white; transform: scale(1.1); z-index: 10;
+            background: #252836;
+        }
+        .element-btn.selected { border-color: white; box-shadow: 0 0 15px currentColor; }
+        .element-btn small { font-size: 8px; opacity: 0.5; position: absolute; top: 4px; left: 4px; }
+
+        /* Lab Station Layout */
+        #lab-station {
+            display: flex; align-items: center; gap: 60px;
+            background: #0d1017; padding: 40px; border-radius: 30px;
+            border: 1px solid #222; width: 100%; box-sizing: border-box;
+        }
+
+        /* Bunsen Burner */
+        #burner-container {
+            position: relative; width: 120px; height: 220px;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+        }
+        #flame {
+            width: 35px; height: 90px;
+            background: radial-gradient(circle at bottom, #44ccff, transparent 70%);
+            border-radius: 50% 50% 20% 20% / 60% 60% 40% 40%;
+            filter: blur(6px); animation: flicker 0.15s infinite alternate;
+            transition: all 0.4s ease; position: absolute; bottom: 50px;
+        }
+        #burner-base {
+            width: 50px; height: 60px; z-index: 3;
+            background: linear-gradient(90deg, #222 0%, #444 50%, #222 100%);
+            border-radius: 4px;
+        }
+
+        #info { flex: 1; }
+        #info h1 { font-size: 36px; margin: 0; color: var(--accent); }
+        #info p { font-size: 17px; color: #999; line-height: 1.5; margin: 15px 0; min-height: 50px; }
+        
+        .energy-meter { width: 100%; height: 8px; background: #1a1c26; border-radius: 10px; overflow: hidden; }
+        #energy-bar { width: 0%; height: 100%; transition: 0.8s cubic-bezier(0.22, 1, 0.36, 1); }
+
+        @keyframes flicker {
+            from { transform: scale(1) translateY(0); opacity: 0.9; }
+            to { transform: scale(1.04) translateY(-2px); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="ui-wrapper">
+        <div style="text-align: left; width: 100%; margin-left: 40px; margin-bottom: 20px;">
+            <h2 style="margin:0; letter-spacing: 2px; color: var(--accent);">ELEMENTAL EMISSION SPECTRA</h2>
+            <span style="color: #444; font-size: 12px;">SELECT A HIGHLIGHTED ELEMENT TO IONIZE</span>
+        </div>
+
+        <div id="table-container">
+            <div id="table"></div>
+        </div>
+
+        <div id="lab-station">
+            <div id="burner-container">
+                <div id="flame"></div>
+                <div id="burner-base"></div>
+            </div>
+
+            <div id="info">
+                <h1 id="el-name">Ready for Testing</h1>
+                <p id="el-desc">Click on a highlighted element in the periodic table to observe its characteristic flame color.</p>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #555; margin-bottom: 5px;">
+                    <span>LOW ENERGY (RED)</span>
+                    <span>RELATIVE PHOTON ENERGY</span>
+                    <span>HIGH ENERGY (VIOLET)</span>
+                </div>
+                <div class="energy-meter"><div id="energy-bar"></div></div>
+            </div>
+        </div>
     </div>
 
 <script>
-    // Simplified Data: 1 line = 1 element
-    const elements = [
-        { s: "Li", n: "Lithium",   col: 1,  row: 2, color: "#ff4d4d", msg: "Crimson Red (Low Energy)" },
-        { s: "Na", n: "Sodium",    col: 1,  row: 3, color: "#ffcc00", msg: "Golden Yellow (Medium Energy)" },
-        { s: "K",  n: "Potassium", col: 1,  row: 4, color: "#da70d6", msg: "Lilac / Violet (High Energy)" },
-        { s: "Ca", n: "Calcium",   col: 2,  row: 4, color: "#ff8c00", msg: "Brick Red Flame" },
-        { s: "Cu", n: "Copper",    col: 11, row: 4, color: "#00fa9a", msg: "Blue-Green (Transition Metal)" }
+    // Comprehensive Dataset
+    const flameElements = [
+        { z: 3,  s: "Li", n: "Lithium",   col: 1,  row: 2, color: "#ff2e2e", energy: 35, msg: "Crimson / Carmine Red. Used in red fireworks and mood-stabilizing medications." },
+        { z: 11, s: "Na", n: "Sodium",    col: 1,  row: 3, color: "#ffcc00", energy: 50, msg: "Intense Persistent Orange-Yellow. So strong it can overwhelm other colors." },
+        { z: 19, s: "K",  n: "Potassium", col: 1,  row: 4, color: "#e090ff", energy: 85, msg: "Lilac / Light Violet. Best observed through cobalt blue glass." },
+        { z: 37, s: "Rb", n: "Rubidium",  col: 1,  row: 5, color: "#ff0077", energy: 80, msg: "Red-Violet. Its name comes from the Latin 'rubidus', meaning deepest red." },
+        { z: 55, s: "Cs", n: "Cesium",    col: 1,  row: 6, color: "#4d4dff", energy: 95, msg: "Sky Blue. Famous for its use in atomic clocks." },
+        
+        { z: 4,  s: "Be", n: "Beryllium", col: 2,  row: 2, color: "#ffffff", energy: 20, msg: "No characteristic flame color (White/None)." },
+        { z: 12, s: "Mg", n: "Magnesium", col: 2,  row: 3, color: "#ffffff", energy: 100, msg: "Brilliant White. Emits UV light; used in flares and older camera flashes." },
+        { z: 20, s: "Ca", n: "Calcium",   col: 2,  row: 4, color: "#ff8c00", energy: 45, msg: "Brick Red. Essential for signaling in biological systems." },
+        { z: 38, s: "Sr", n: "Strontium", col: 2,  row: 5, color: "#ff0044", energy: 40, msg: "Bright Scarlet Red. The standard color for emergency flares." },
+        { z: 56, s: "Ba", n: "Barium",    col: 2,  row: 6, color: "#ccff33", energy: 70, msg: "Pale Green (Apple Green). Used as a green colorant in pyrotechnics." },
+        { z: 88, s: "Ra", n: "Radium",    col: 2,  row: 7, color: "#ff0000", energy: 30, msg: "Crimson Red. Highly radioactive alkaline earth metal." },
+
+        { z: 29, s: "Cu", n: "Copper(II)",col: 11, row: 4, color: "#00fa9a", energy: 75, msg: "Blue-Green / Emerald. Typical of halide-containing copper compounds." },
+        { z: 49, s: "In", n: "Indium",    col: 13, row: 5, color: "#4b0082", energy: 90, msg: "Indigo Blue. A rare metal that stays soft at very low temperatures." },
+        { z: 81, s: "Tl", n: "Thallium",  col: 13, row: 6, color: "#00ff00", energy: 65, msg: "Pure Green. Historically used in rodenticides; highly toxic." },
+        { z: 82, s: "Pb", n: "Lead",      col: 14, row: 6, color: "#99ccff", energy: 60, msg: "Blue-White. Lead salts produce a dim but distinct pale blue flame." },
+        { z: 31, s: "Ga", n: "Gallium",   col: 13, row: 4, color: "#4444ff", energy: 88, msg: "Violet-Blue. Known for melting in the palm of your hand." },
+        { z: 33, s: "As", n: "Arsenic",   col: 15, row: 4, color: "#800080", energy: 92, msg: "Blue. Produces a garlic-like odor when heated." },
+        { z: 51, s: "Sb", n: "Antimony",  col: 15, row: 5, color: "#99ffcc", energy: 72, msg: "Pale Green. Used in flame retardants and alloys." },
+        { z: 5,  s: "B",  n: "Boron",     col: 13, row: 2, color: "#00ff00", energy: 68, msg: "Bright Green. Often tested using Boric Acid in methanol." }
     ];
 
-    elements.forEach(el => {
-        const btn = document.createElement('button');
-        btn.innerHTML = `<b>${el.s}</b>`;
-        
-        // Positioning and Basic Styling
-        btn.style.gridColumn = el.col;
-        btn.style.gridRow = el.row;
-        btn.style.padding = "10px 0";
-        btn.style.background = "#222";
-        btn.style.color = "white";
-        btn.style.border = "1px solid #444";
-        btn.style.cursor = "pointer";
+    const table = document.getElementById('table');
+    const flame = document.getElementById('flame');
 
-        // Interaction
-        btn.onclick = () => {
-            name.innerText = el.n + " (" + el.s + ")";
-            desc.innerText = el.msg;
-            flame.style.background = el.color;
-            panel.style.borderColor = el.color;
-            btn.style.background = el.color; // Highlight the button
-        };
+    // Create a 7x18 grid of all elements
+    for(let r=1; r<=7; r++) {
+        for(let c=1; c<=18; c++) {
+            // Find if this cell has an element from our flame list
+            const el = flameElements.find(e => e.col === c && e.row === r);
+            const div = document.createElement('div');
+            div.className = 'element-btn';
+            if (el) {
+                div.classList.add('active-metal');
+                div.innerHTML = `<small>${el.z}</small><b>${el.s}</b>`;
+                div.style.color = el.color;
+                div.onclick = () => activateFlame(el, div);
+            } else {
+                // Placeholder for empty periodic table spots
+                div.style.opacity = "0.1";
+            }
+            div.style.gridColumn = c;
+            div.style.gridRow = r;
+            table.appendChild(div);
+        }
+    }
 
-        table.appendChild(btn);
-    });
+    function activateFlame(el, btn) {
+        // Text updates
+        document.getElementById('el-name').innerText = el.n;
+        document.getElementById('el-name').style.color = el.color;
+        document.getElementById('el-desc').innerText = el.msg;
+
+        // Visual updates
+        flame.style.background = `radial-gradient(circle at bottom, white 0%, ${el.color} 45%, transparent 85%)`;
+        flame.style.boxShadow = `0 -15px 35px ${el.color}, 0 -5px 10px white inset`;
+        flame.style.height = (80 + (el.energy / 3)) + "px";
+        flame.style.width = (35 + (el.energy / 10)) + "px";
+
+        document.getElementById('energy-bar').style.width = el.energy + "%";
+        document.getElementById('energy-bar').style.background = el.color;
+
+        // Selection state
+        document.querySelectorAll('.element-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+    }
 </script>
 </body>
 </html>
