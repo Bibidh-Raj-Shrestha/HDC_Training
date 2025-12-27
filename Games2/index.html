@@ -1,51 +1,249 @@
 <!DOCTYPE html>
 <html>
-<body style="margin:0; background:#111; text-align:center; color:white;">
-    <p>P1: WASD | P2: Arrows</p>
-    <canvas id="cv" width="400" height="400" style="border:2px solid white;"></canvas>
+<head>
+    <title>Duo-Snake: Fullscreen Battle</title>
+    <style>
+        :root { 
+            --bg: #010204; 
+            --p1-col: #00ffaa; 
+            --p2-col: #ff0077; 
+        }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg); color: white; overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        #main-stage {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The Canvas now scales based on the height of your screen */
+        #cv {
+            height: 95vh;
+            width: 95vh; /* Perfect Square */
+            background: #05070a;
+            border: 2px solid rgba(255,255,255,0.05);
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+            display: block;
+        }
+
+        /* Floating Side Panels */
+        .side-panel {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 180px;
+            height: 80%;
+            background: rgba(15, 20, 30, 0.8);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            z-index: 10;
+        }
+        #p1-panel { left: 20px; border-left: 5px solid var(--p1-col); }
+        #p2-panel { right: 20px; border-right: 5px solid var(--p2-col); }
+
+        .overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: rgba(0, 0, 0, 0.85); z-index: 30;
+        }
+
+        /* Color Selection Buttons */
+        .color-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0; }
+        .color-opt { 
+            height: 35px; border-radius: 8px; cursor: pointer; border: 2px solid transparent; 
+            transition: 0.2s;
+        }
+        .color-opt.selected { border-color: white; transform: scale(1.1); box-shadow: 0 0 15px white; }
+        .color-opt.disabled { opacity: 0.05; cursor: not-allowed; filter: grayscale(1); }
+
+        .ready-btn {
+            padding: 15px; width: 100%; cursor: pointer; border: none;
+            background: rgba(255,255,255,0.1); color: #555; 
+            font-weight: 900; border-radius: 12px; transition: 0.3s;
+        }
+        .ready-btn.active { background: #fff; color: #000; box-shadow: 0 0 20px #fff; }
+
+        .stat-label { font-size: 11px; color: #777; letter-spacing: 2px; text-transform: uppercase; }
+        .stat-val { font-size: 32px; font-weight: 900; margin-bottom: 5px; }
+        
+        h2 { margin: 0; font-size: 18px; letter-spacing: 2px; }
+        #winner-txt { font-size: 60px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="main-stage">
+    <div class="side-panel" id="p1-panel">
+        <div>
+            <h2 id="p1-name" style="color:var(--p1-col)">P1 VAPOR</h2>
+            <div class="stat-label" style="margin-top:20px">Color Select</div>
+            <div class="color-grid" id="p1-colors"></div>
+        </div>
+        <div>
+            <div class="stat-label">Length</div>
+            <div class="stat-val" id="p1-score">1</div>
+            <button class="ready-btn" id="p1-ready-btn" onclick="toggleReady(1)">READY?</button>
+        </div>
+    </div>
+
+    <div style="position: relative;">
+        <canvas id="cv" width="800" height="800"></canvas>
+        
+        <div id="startUI" class="overlay">
+            <h1 style="letter-spacing:15px; font-size: 40px; margin:0;">DUO_LINK</h1>
+            <p style="color:#444; margin-top:10px;">AWAITING DUAL AUTHENTICATION</p>
+        </div>
+
+        <div id="overUI" class="overlay" style="display:none">
+            <h1 id="winner-txt"></h1>
+            <button onclick="resetToMenu()" style="background:white; border:none; padding:15px 40px; cursor:pointer; font-weight:bold; border-radius:5px;">RE-INITIALIZE</button>
+        </div>
+    </div>
+
+    <div class="side-panel" id="p2-panel">
+        <div>
+            <h2 id="p2-name" style="color:var(--p2-col)">P2 NEON</h2>
+            <div class="stat-label" style="margin-top:20px">Color Select</div>
+            <div class="color-grid" id="p2-colors"></div>
+        </div>
+        <div>
+            <div class="stat-label">Length</div>
+            <div class="stat-val" id="p2-score">1</div>
+            <button class="ready-btn" id="p2-ready-btn" onclick="toggleReady(2)">READY?</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    const ctx = cv.getContext('2d');
-    let s1 = [{x:10, y:10}], d1 = {x:1, y:0};
-    let s2 = [{x:30, y:30}], d2 = {x:-1, y:0};
-    let apple = {x:20, y:20};
+    const canvas = document.getElementById('cv');
+    const ctx = canvas.getContext('2d');
+    const gridSize = 25, tileCount = 32;
+    const colors = ["#00ffaa", "#ff0077", "#00bcff", "#ffcc00", "#ff6600", "#a855f7"];
+    
+    let s1, d1, s2, d2, apple, isRunning = false;
+    let p1Ready = false, p2Ready = false;
+    let p1Color = colors[0], p2Color = colors[1];
+
+    function setupPickers() {
+        const p1Box = document.getElementById('p1-colors');
+        const p2Box = document.getElementById('p2-colors');
+        p1Box.innerHTML = p2Box.innerHTML = '';
+
+        colors.forEach(c => {
+            const btn1 = document.createElement('div');
+            btn1.className = `color-opt ${p1Color === c ? 'selected' : ''} ${p2Color === c ? 'disabled' : ''}`;
+            btn1.style.background = c;
+            btn1.onclick = () => { if(p2Color !== c && !isRunning) { p1Color = c; updateUI(); } };
+            p1Box.appendChild(btn1);
+
+            const btn2 = document.createElement('div');
+            btn2.className = `color-opt ${p2Color === c ? 'selected' : ''} ${p1Color === c ? 'disabled' : ''}`;
+            btn2.style.background = c;
+            btn2.onclick = () => { if(p1Color !== c && !isRunning) { p2Color = c; updateUI(); } };
+            p2Box.appendChild(btn2);
+        });
+    }
+
+    function updateUI() {
+        document.documentElement.style.setProperty('--p1-col', p1Color);
+        document.documentElement.style.setProperty('--p2-col', p2Color);
+        setupPickers();
+    }
+
+    function toggleReady(p) {
+        if(p === 1) p1Ready = !p1Ready; else p2Ready = !p2Ready;
+        document.getElementById(`p${p}-ready-btn`).innerText = (p === 1 ? p1Ready : p2Ready) ? "LOCKED" : "READY?";
+        document.getElementById(`p${p}-ready-btn`).classList.toggle('active');
+        if(p1Ready && p2Ready) startBattle();
+    }
+
+    function startBattle() {
+        s1 = [{x: 10, y: 25}]; d1 = {x: 0, y: -1}; 
+        s2 = [{x: 22, y: 25}]; d2 = {x: 0, y: -1}; 
+        apple = {x: 16, y: 8};
+        isRunning = true;
+        startUI.style.display = overUI.style.display = "none";
+    }
+
+    function resetToMenu() {
+        isRunning = false; p1Ready = false; p2Ready = false;
+        startUI.style.display = "flex"; overUI.style.display = "none";
+        document.querySelectorAll('.ready-btn').forEach(b => { b.classList.remove('active'); b.innerText = "READY?"; });
+    }
 
     window.onkeydown = e => {
-    // Player 1 (WASD)
-    if(e.key=='w' && d1.y==0) d1={x:0, y:-1}; // Up
-    if(e.key=='s' && d1.y==0) d1={x:0, y:1};  // Down
-    if(e.key=='a' && d1.x==0) d1={x:-1, y:0}; // Left (New)
-    if(e.key=='d' && d1.x==0) d1={x:1, y:0};  // Right (New)
-
-    // Player 2 (Arrows)
-    if(e.key=='ArrowUp' && d2.y==0) d2={x:0, y:-1}; 
-    if(e.key=='ArrowDown' && d2.y==0) d2={x:0, y:1};
-    if(e.key=='ArrowLeft' && d2.x==0) d2={x:-1, y:0}; // Left (New)
-    if(e.key=='ArrowRight' && d2.x==0) d2={x:1, y:0}; // Right (New)
-};
-
-    function move(s, d) {
-        let head = {x: s[0].x + d.x, y: s[0].y + d.y};
-        s.unshift(head); // Add new head to start of array
-        if(head.x == apple.x && head.y == apple.y) {
-            apple = {x: Math.floor(Math.random()*40), y: Math.floor(Math.random()*40)};
-        } else {
-            s.pop(); // Remove tail if no food eaten
-        }
-    }
+        const k = e.key.toLowerCase();
+        if(k=='w' && d1.y==0) d1={x:0, y:-1}; if(k=='s' && d1.y==0) d1={x:0, y:1};
+        if(k=='a' && d1.x==0) d1={x:-1, y:0}; if(k=='d' && d1.x==0) d1={x:1, y:0};
+        if(e.key=='ArrowUp' && d2.y==0) d2={x:0, y:-1}; if(e.key=='ArrowDown' && d2.y==0) d2={x:0, y:1};
+        if(e.key=='ArrowLeft' && d2.x==0) d2={x:-1, y:0}; if(e.key=='ArrowRight' && d2.x==0) d2={x:1, y:0};
+    };
 
     function game() {
-        move(s1, d1); move(s2, d2);
+        if(!isRunning) return;
         
-        ctx.fillStyle = "black"; ctx.fillRect(0,0,400,400);
-        ctx.fillStyle = "red"; ctx.fillRect(apple.x*10, apple.y*10, 10, 10);
+        let h1 = { x: (s1[0].x + d1.x + tileCount) % tileCount, y: (s1[0].y + d1.y + tileCount) % tileCount };
+        let h2 = { x: (s2[0].x + d2.x + tileCount) % tileCount, y: (s2[0].y + d2.y + tileCount) % tileCount };
+
+        s1.unshift(h1); s2.unshift(h2);
+
+        [s1, s2].forEach(s => {
+            if(s[0].x === apple.x && s[0].y === apple.y) {
+                apple = {x: Math.floor(Math.random()*tileCount), y: Math.floor(Math.random()*tileCount)};
+            } else s.pop();
+        });
+
+        document.getElementById('p1-score').innerText = s1.length;
+        document.getElementById('p2-score').innerText = s2.length;
+
+        let crash1 = s1.slice(1).some(b => b.x==s1[0].x && b.y==s1[0].y) || s2.some(b => b.x==s1[0].x && b.y==s1[0].y);
+        let crash2 = s2.slice(1).some(b => b.x==s2[0].x && b.y==s2[0].y) || s1.some(b => b.x==s2[0].x && b.y==s2[0].y);
+
+        if(crash1 || crash2) {
+            isRunning = false; overUI.style.display = "flex";
+            const winnerTxt = document.getElementById('winner-txt');
+            winnerTxt.innerText = (crash1 && crash2) ? "STALEMATE" : crash1 ? "P2 VICTORIOUS" : "P1 VICTORIOUS";
+            winnerTxt.style.color = crash1 ? p2Color : p1Color;
+        }
+
+        ctx.fillStyle = "#05070a"; ctx.fillRect(0,0,800,800);
         
-        ctx.fillStyle = "lime"; s1.forEach(b => ctx.fillRect(b.x*10, b.y*10, 8, 8));
-        ctx.fillStyle = "cyan"; s2.forEach(b => ctx.fillRect(b.x*10, b.y*10, 8, 8));
-        
-        // Basic death check
-        if(s1[0].x < 0 || s1[0].x > 40) location.reload();
+        // Grid Lines
+        ctx.strokeStyle = "rgba(255,255,255,0.03)";
+        for(let i=0; i<800; i+=gridSize) {
+            ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i,800); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(800,i); ctx.stroke();
+        }
+
+        // Apple
+        ctx.shadowBlur = 25; ctx.shadowColor = "#ff0000"; ctx.fillStyle = "#ff4444";
+        ctx.beginPath(); ctx.arc(apple.x*gridSize+12, apple.y*gridSize+12, 11, 0, 7); ctx.fill();
+
+        // P1 & P2 Rendering
+        [[s1, p1Color], [s2, p2Color]].forEach(([s, col]) => {
+            ctx.shadowBlur = 15; ctx.shadowColor = col;
+            s.forEach((b, i) => {
+                ctx.fillStyle = i==0 ? "#fff" : col;
+                ctx.fillRect(b.x*gridSize+1, b.y*gridSize+1, gridSize-2, gridSize-2);
+            });
+        });
+        ctx.shadowBlur = 0;
     }
-    setInterval(game, 100);
+
+    setupPickers();
+    setInterval(game, 90);
 </script>
 </body>
 </html>
