@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
+   <style>
         body { margin: 0; background: #050a15; overflow: hidden; font-family: 'Segoe UI', sans-serif; color: white; }
         .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -26,7 +26,7 @@
         }
         button:hover { filter: brightness(1.2); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 242, 255, 0.4); }
         .kbd { background: #333; padding: 2px 6px; border-radius: 4px; color: #00f2ff; font-size: 12px; }
-    </style>
+    </style> 
 </head>
 <body>
 
@@ -47,14 +47,12 @@
     <div class="card" style="border-color: #ff00ff;">
         <h1 style="color:#ff00ff; margin:0; font-size: 32px;">MISSION FAILED</h1>
         <div id="rankLabel" style="color: #ffcc00; font-weight: bold; margin-top: 5px; font-size: 14px;">RANK: NOVICE</div>
-        
         <div class="stats-grid">
             <div class="stat-box">Survived<span class="stat-val" id="finalTime">0s</span></div>
             <div class="stat-box">Close Calls<span class="stat-val" id="closeCalls">0</span></div>
             <div class="stat-box">Best Time<span class="stat-val" id="bestStat">0s</span></div>
             <div class="stat-box">Intensity<span class="stat-val" id="intensity">0%</span></div>
         </div>
-
         <p id="newRecord" style="color:#4ade80; display:none; font-size: 14px; margin-bottom: 15px;">★ NEW WORLD RECORD ★</p>
         <button onclick="startGame()" style="background: linear-gradient(45deg, #ff00ff, #8000ff);">REBOOT SYSTEM</button>
     </div>
@@ -63,6 +61,7 @@
 <canvas id="c"></canvas>
 
 <script>
+    // BLOCK 2: CANVAS & CORE VARIABLES (DAY 1)
     const ctx = c.getContext('2d');
     let p, enemies, score, keys = {}, isRunning = false, startTime, spawnTimer, nearMisses = 0;
 
@@ -71,6 +70,8 @@
 
     window.onresize = () => { c.width = innerWidth; c.height = innerHeight; };
     window.onresize();
+
+    // BLOCK 4: INPUT HANDLING (DAY 2)
     window.onkeydown = e => keys[e.key.toLowerCase()] = 1;
     window.onkeyup = e => keys[e.key.toLowerCase()] = 0;
 
@@ -81,6 +82,7 @@
         return "CYBER LEGEND";
     }
 
+    // BLOCK 3: GAME START & PLAYER (DAY 2)
     function startGame() {
         p = { x: c.width/2, y: c.height/2, speed: 6, emoji: "😎" };
         enemies = []; score = 0; nearMisses = 0;
@@ -90,6 +92,7 @@
         spawn();
     }
 
+    // BLOCK 5: ENEMY SPAWNING (DAY 3)
     function spawn() {
         if(!isRunning) return;
         let angle = Math.random() * Math.PI * 2;
@@ -101,6 +104,7 @@
         spawnTimer = setTimeout(spawn, Math.max(180, 700 - (score * 10)));
     }
 
+    // BLOCK 6: LOGIC & MOVEMENT (DAY 3)
     function update() {
         if(!isRunning) return;
         score = Math.floor((Date.now() - startTime) / 1000);
@@ -115,11 +119,12 @@
             en.y += (p.y - en.y) * (en.s / 100);
             let d = Math.hypot(p.x - en.x, p.y - en.y);
             if(d < 80) { scaring = true; if(Math.random() < 0.05) nearMisses++; }
-            if(d < 28) die();
+            if(d < 28) die(); // Trigger Block 7
         });
         p.emoji = scaring ? "😱" : "😎";
     }
 
+    // BLOCK 7: GAME OVER & STORAGE (DAY 4)
     function die() {
         isRunning = false;
         gameOverUI.style.display = "flex";
@@ -135,6 +140,7 @@
         } else { newRecord.style.display = "none"; }
     }
 
+    // BLOCK 8: RENDERING LOOP (DAY 4)
     function draw() {
         ctx.fillStyle = "#050a15";
         ctx.fillRect(0, 0, c.width, c.height);
