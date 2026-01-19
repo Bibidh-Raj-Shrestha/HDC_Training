@@ -1,8 +1,7 @@
-<!-- LUMINA: Ion Emission Spectrolab -->
 <!DOCTYPE html>
 <html>
 <head>
-    <style>
+<style>
         :root { --accent: #00f2ff; --bg-dark: #05070a; }
         body { 
             margin: 0; background: var(--bg-dark); color: white; 
@@ -114,20 +113,21 @@
     </div>
 
 <script>
+    // BLOCK 2: THE DATASET (DAY 2)
     // Comprehensive Dataset
     const flameElements = [
-        { z: 3,  s: "Li", n: "Lithium",   col: 1,  row: 2, color: "#ff2e2e", energy: 35, msg: "Crimson / Carmine Red. Used in red fireworks and mood-stabilizing medications." },
-        { z: 11, s: "Na", n: "Sodium",    col: 1,  row: 3, color: "#ffcc00", energy: 50, msg: "Intense Persistent Orange-Yellow. So strong it can overwhelm other colors." },
+        { z: 3,  s: "Li", n: "Lithium",    col: 1,  row: 2, color: "#ff2e2e", energy: 35, msg: "Crimson / Carmine Red. Used in red fireworks and mood-stabilizing medications." },
+        { z: 11, s: "Na", n: "Sodium",     col: 1,  row: 3, color: "#ffcc00", energy: 50, msg: "Intense Persistent Orange-Yellow. So strong it can overwhelm other colors." },
         { z: 19, s: "K",  n: "Potassium", col: 1,  row: 4, color: "#e090ff", energy: 85, msg: "Lilac / Light Violet. Best observed through cobalt blue glass." },
         { z: 37, s: "Rb", n: "Rubidium",  col: 1,  row: 5, color: "#ff0077", energy: 80, msg: "Red-Violet. Its name comes from the Latin 'rubidus', meaning deepest red." },
-        { z: 55, s: "Cs", n: "Cesium",    col: 1,  row: 6, color: "#4d4dff", energy: 95, msg: "Sky Blue. Famous for its use in atomic clocks." },
+        { z: 55, s: "Cs", n: "Cesium",     col: 1,  row: 6, color: "#4d4dff", energy: 95, msg: "Sky Blue. Famous for its use in atomic clocks." },
         
         { z: 4,  s: "Be", n: "Beryllium", col: 2,  row: 2, color: "#ffffff", energy: 20, msg: "No characteristic flame color (White/None)." },
         { z: 12, s: "Mg", n: "Magnesium", col: 2,  row: 3, color: "#ffffff", energy: 100, msg: "Brilliant White. Emits UV light; used in flares and older camera flashes." },
-        { z: 20, s: "Ca", n: "Calcium",   col: 2,  row: 4, color: "#ff8c00", energy: 45, msg: "Brick Red. Essential for signaling in biological systems." },
+        { z: 20, s: "Ca", n: "Calcium",    col: 2,  row: 4, color: "#ff8c00", energy: 45, msg: "Brick Red. Essential for signaling in biological systems." },
         { z: 38, s: "Sr", n: "Strontium", col: 2,  row: 5, color: "#ff0044", energy: 40, msg: "Bright Scarlet Red. The standard color for emergency flares." },
-        { z: 56, s: "Ba", n: "Barium",    col: 2,  row: 6, color: "#ccff33", energy: 70, msg: "Pale Green (Apple Green). Used as a green colorant in pyrotechnics." },
-        { z: 88, s: "Ra", n: "Radium",    col: 2,  row: 7, color: "#ff0000", energy: 30, msg: "Crimson Red. Highly radioactive alkaline earth metal." },
+        { z: 56, s: "Ba", n: "Barium",     col: 2,  row: 6, color: "#ccff33", energy: 70, msg: "Pale Green (Apple Green). Used as a green colorant in pyrotechnics." },
+        { z: 88, s: "Ra", n: "Radium",     col: 2,  row: 7, color: "#ff0000", energy: 30, msg: "Crimson Red. Highly radioactive alkaline earth metal." },
 
         { z: 29, s: "Cu", n: "Copper(II)",col: 11, row: 4, color: "#00fa9a", energy: 75, msg: "Blue-Green / Emerald. Typical of halide-containing copper compounds." },
         { z: 49, s: "In", n: "Indium",    col: 13, row: 5, color: "#4b0082", energy: 90, msg: "Indigo Blue. A rare metal that stays soft at very low temperatures." },
@@ -136,12 +136,13 @@
         { z: 31, s: "Ga", n: "Gallium",   col: 13, row: 4, color: "#4444ff", energy: 88, msg: "Violet-Blue. Known for melting in the palm of your hand." },
         { z: 33, s: "As", n: "Arsenic",   col: 15, row: 4, color: "#800080", energy: 92, msg: "Blue. Produces a garlic-like odor when heated." },
         { z: 51, s: "Sb", n: "Antimony",  col: 15, row: 5, color: "#99ffcc", energy: 72, msg: "Pale Green. Used in flame retardants and alloys." },
-        { z: 5,  s: "B",  n: "Boron",     col: 13, row: 2, color: "#00ff00", energy: 68, msg: "Bright Green. Often tested using Boric Acid in methanol." }
+        { z: 5,  s: "B",  n: "Boron",      col: 13, row: 2, color: "#00ff00", energy: 68, msg: "Bright Green. Often tested using Boric Acid in methanol." }
     ];
 
     const table = document.getElementById('table');
     const flame = document.getElementById('flame');
 
+    // BLOCK 3: GRID GENERATION (DAY 3)
     // Create a 7x18 grid of all elements
     for(let r=1; r<=7; r++) {
         for(let c=1; c<=18; c++) {
@@ -164,6 +165,7 @@
         }
     }
 
+    // BLOCK 4: FLAME ACTIVATION LOGIC (DAY 4)
     function activateFlame(el, btn) {
         // Text updates
         document.getElementById('el-name').innerText = el.n;

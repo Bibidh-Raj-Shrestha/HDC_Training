@@ -127,6 +127,7 @@
 </div>
 
 <script>
+    // BLOCK 2: SETUP & VARIABLES (DAY 1)
     const canvas = document.getElementById('cv');
     const ctx = canvas.getContext('2d');
     const gridSize = 25, tileCount = 32;
@@ -136,6 +137,7 @@
     let p1Ready = false, p2Ready = false;
     let p1Color = colors[0], p2Color = colors[1];
 
+    // BLOCK 3: PICKERS & UI LOGIC (DAY 2)
     function setupPickers() {
         const p1Box = document.getElementById('p1-colors');
         const p2Box = document.getElementById('p2-colors');
@@ -183,6 +185,7 @@
         document.querySelectorAll('.ready-btn').forEach(b => { b.classList.remove('active'); b.innerText = "READY?"; });
     }
 
+    // BLOCK 4: INPUT HANDLING (DAY 2)
     window.onkeydown = e => {
         const k = e.key.toLowerCase();
         if(k=='w' && d1.y==0) d1={x:0, y:-1}; if(k=='s' && d1.y==0) d1={x:0, y:1};
@@ -191,6 +194,7 @@
         if(e.key=='ArrowLeft' && d2.x==0) d2={x:-1, y:0}; if(e.key=='ArrowRight' && d2.x==0) d2={x:1, y:0};
     };
 
+    // BLOCK 5: GAME ENGINE & SNAKE LOGIC (DAY 3)
     function game() {
         if(!isRunning) return;
         
@@ -208,6 +212,7 @@
         document.getElementById('p1-score').innerText = s1.length;
         document.getElementById('p2-score').innerText = s2.length;
 
+        // BLOCK 6: COLLISION (DAY 4)
         let crash1 = s1.slice(1).some(b => b.x==s1[0].x && b.y==s1[0].y) || s2.some(b => b.x==s1[0].x && b.y==s1[0].y);
         let crash2 = s2.slice(1).some(b => b.x==s2[0].x && b.y==s2[0].y) || s1.some(b => b.x==s2[0].x && b.y==s2[0].y);
 
@@ -218,6 +223,7 @@
             winnerTxt.style.color = crash1 ? p2Color : p1Color;
         }
 
+        // BLOCK 7: RENDERING (DAY 3/4)
         ctx.fillStyle = "#05070a"; ctx.fillRect(0,0,800,800);
         
         // Grid Lines
